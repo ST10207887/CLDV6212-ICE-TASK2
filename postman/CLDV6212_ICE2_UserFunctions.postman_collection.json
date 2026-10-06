@@ -1,0 +1,251 @@
+{
+  "info": {
+    "_postman_id": "fa7e40a5-691b-48ec-8eb7-4004d190b773",
+    "name": "CLDV6212 ICE 2 - User Functions",
+    "description": "Tests for the HTTP-triggered Azure Functions (Vuyisa Mgudlwa, ST10207887). Run the folder in order with the Collection Runner.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:7071/api"
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "email",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Create user (201)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Vuyisa\",\n  \"lastName\": \"Mgudlwa\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"0712345678\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('email', 'User' + Date.now() + '@example.com');"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 201 Created\", () => pm.response.to.have.status(201));",
+              "const user = pm.response.json();",
+              "pm.test(\"Response has an id\", () => pm.expect(user.id).to.be.a('string').and.not.empty);",
+              "pm.test(\"Email is stored in lower case\", () => pm.expect(user.email).to.eql(pm.collectionVariables.get('email').toLowerCase()));",
+              "pm.test(\"No storage internals are exposed\", () => { pm.expect(user).to.not.have.property('partitionKey'); pm.expect(user).to.not.have.property('rowKey'); });",
+              "pm.collectionVariables.set('userId', user.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create user - invalid data (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"\",\n  \"email\": \"not-an-email\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 400 Bad Request\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Validation details returned\", () => pm.expect(pm.response.json().details).to.be.an('array').that.is.not.empty);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Create user - duplicate email (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Copy\",\n  \"lastName\": \"User\",\n  \"email\": \"{{email}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 409 Conflict\", () => pm.response.to.have.status(409));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Get user by id (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/users/{{userId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "{{userId}}"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200 OK\", () => pm.response.to.have.status(200));",
+              "const user = pm.response.json();",
+              "pm.test(\"Correct user returned\", () => pm.expect(user.id).to.eql(pm.collectionVariables.get('userId')));",
+              "pm.test(\"Has user fields\", () => pm.expect(user).to.include.keys('firstName','lastName','email','createdAt'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Get user by id - not found (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/users/does-not-exist-123",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "does-not-exist-123"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 404 Not Found\", () => pm.response.to.have.status(404));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Get all users (200)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/users",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status is 200 OK\", () => pm.response.to.have.status(200));",
+              "const users = pm.response.json();",
+              "pm.test(\"Returns a JSON array\", () => pm.expect(users).to.be.an('array'));",
+              "pm.test(\"Created user is in the list\", () => pm.expect(users.map(u => u.id)).to.include(pm.collectionVariables.get('userId')));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
